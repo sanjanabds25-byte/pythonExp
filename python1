@@ -1,0 +1,44 @@
+
+
+candidates = []
+
+def add_candidate():
+    name = input("Enter candidate name: ")
+    email = input("Enter email: ")
+    skills = input("Enter skills: ")
+
+    candidate = {
+        "name": name,
+        "email": email,
+        "skills": skills
+    }
+
+    candidates.append(candidate)
+    print("Candidate added successfully!")
+
+def view_candidates():
+    if not candidates:
+        print("No candidates found.")
+        return
+
+    for candidate in candidates:
+        print("Name:", candidate["name"])
+        print("Email:", candidate["email"])
+        print("Skills:", candidate["skills"])
+        print("--------------------")
+
+while True:
+    print("\n1. Add Candidate")
+    print("2. View Candidates")
+    print("3. Exit")
+
+    choice = input("Enter choice: ")
+
+    if choice == "1":
+        add_candidate()
+    elif choice == "2":
+        view_candidates()
+    elif choice == "3":
+        break
+    else:
+        print("Invalid choice!")
