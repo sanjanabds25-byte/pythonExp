@@ -1,0 +1,322 @@
+
+# Recruitment & HR Analytics Portal
+# Stage 2: Moderate Project
+
+candidates = []
+jobs = []
+applications = []
+interviews = []
+
+def add_candidate():
+    name = input("Enter candidate name: ").strip()
+    email = input("Enter candidate email: ").strip()
+    skills = input("Enter candidate skills: ").strip()
+
+    if not name or not email:
+        print("Name and email are required!")
+        return
+
+    candidate = {
+        "id": len(candidates) + 1,
+        "name": name,
+        "email": email,
+        "skills": skills
+    }
+
+    candidates.append(candidate)
+    print("Candidate added successfully!")
+
+
+def view_candidates():
+    print("\n--- CANDIDATE LIST ---")
+
+    if not candidates:
+        print("No candidates found.")
+        return
+
+    for c in candidates:
+        print(
+            f"ID: {c['id']} | Name: {c['name']} | "
+            f"Email: {c['email']} | Skills: {c['skills']}"
+        )
+
+
+def add_job():
+    title = input("Enter job title: ").strip()
+    department = input("Enter department: ").strip()
+
+    if not title or not department:
+        print("Job title and department are required!")
+        return
+
+    job = {
+        "id": len(jobs) + 1,
+        "title": title,
+        "department": department
+    }
+
+    jobs.append(job)
+    print("Job opening added successfully!")
+
+
+def view_jobs():
+    print("\n--- JOB OPENINGS ---")
+
+    if not jobs:
+        print("No job openings available.")
+        return
+
+    for j in jobs:
+        print(
+            f"ID: {j['id']} | Job: {j['title']} | "
+            f"Department: {j['department']}"
+        )
+
+
+def apply_for_job():
+    if not candidates or not jobs:
+        print("Add at least one candidate and one job first.")
+        return
+
+    view_candidates()
+    view_jobs()
+
+    try:
+        candidate_id = int(input("Enter candidate ID: "))
+        job_id = int(input("Enter job ID: "))
+    except ValueError:
+        print("Please enter valid numeric IDs.")
+        return
+
+    candidate = next(
+        (c for c in candidates if c["id"] == candidate_id),
+        None
+    )
+
+    job = next(
+        (j for j in jobs if j["id"] == job_id),
+        None
+    )
+
+    if candidate is None or job is None:
+        print("Invalid candidate ID or job ID.")
+        return
+
+    duplicate = any(
+        a["candidate_id"] == candidate_id
+        and a["job_id"] == job_id
+        for a in applications
+    )
+
+    if duplicate:
+        print("Candidate has already applied for this job.")
+        return
+
+    application = {
+        "id": len(applications) + 1,
+        "candidate_id": candidate_id,
+        "job_id": job_id,
+        "candidate_name": candidate["name"],
+        "job_title": job["title"],
+        "status": "Applied"
+    }
+
+    applications.append(application)
+    print("Job application submitted successfully!")
+
+
+def view_applications():
+    print("\n--- JOB APPLICATIONS ---")
+
+    if not applications:
+        print("No applications found.")
+        return
+
+    for a in applications:
+        print(
+            f"Application ID: {a['id']} | "
+            f"Candidate: {a['candidate_name']} | "
+            f"Job: {a['job_title']} | "
+            f"Status: {a['status']}"
+        )
+
+
+def update_status():
+    if not applications:
+        print("No applications available.")
+        return
+
+    view_applications()
+
+    try:
+        app_id = int(input("Enter application ID: "))
+    except ValueError:
+        print("Enter a valid numeric ID.")
+        return
+
+    application = next(
+        (a for a in applications if a["id"] == app_id),
+        None
+    )
+
+    if application is None:
+        print("Application not found.")
+        return
+
+    print("1. Applied")
+    print("2. Shortlisted")
+    print("3. Interview Scheduled")
+    print("4. Selected")
+    print("5. Rejected")
+
+    statuses = {
+        "1": "Applied",
+        "2": "Shortlisted",
+        "3": "Interview Scheduled",
+        "4": "Selected",
+        "5": "Rejected"
+    }
+
+    choice = input("Choose new status: ").strip()
+
+    if choice not in statuses:
+        print("Invalid status choice.")
+        return
+
+    application["status"] = statuses[choice]
+    print("Application status updated successfully!")
+
+
+def schedule_interview():
+    if not applications:
+        print("No applications available.")
+        return
+
+    view_applications()
+
+    try:
+        app_id = int(input("Enter application ID: "))
+    except ValueError:
+        print("Enter a valid numeric ID.")
+        return
+
+    application = next(
+        (a for a in applications if a["id"] == app_id),
+        None
+    )
+
+    if application is None:
+        print("Application not found.")
+        return
+
+    date = input("Interview date (YYYY-MM-DD): ").strip()
+    time = input("Interview time: ").strip()
+
+    if not date or not time:
+        print("Date and time are required.")
+        return
+
+    interview = {
+        "id": len(interviews) + 1,
+        "application_id": app_id,
+        "candidate_name": application["candidate_name"],
+        "job_title": application["job_title"],
+        "date": date,
+        "time": time
+    }
+
+    interviews.append(interview)
+    application["status"] = "Interview Scheduled"
+
+    print("Interview scheduled successfully!")
+
+
+def view_interviews():
+    print("\n--- INTERVIEW SCHEDULE ---")
+
+    if not interviews:
+        print("No interviews scheduled.")
+        return
+
+    for i in interviews:
+        print(
+            f"Interview ID: {i['id']} | "
+            f"Candidate: {i['candidate_name']} | "
+            f"Job: {i['job_title']} | "
+            f"Date: {i['date']} | Time: {i['time']}"
+        )
+
+
+def analytics_report():
+    print("\n===== HR ANALYTICS REPORT =====")
+    print("Total candidates:", len(candidates))
+    print("Total job openings:", len(jobs))
+    print("Total applications:", len(applications))
+    print("Total interviews:", len(interviews))
+
+    print("\n--- Application Status Summary ---")
+
+    statuses = [
+        "Applied",
+        "Shortlisted",
+        "Interview Scheduled",
+        "Selected",
+        "Rejected"
+    ]
+
+    for status in statuses:
+        count = sum(
+            1 for a in applications
+            if a["status"] == status
+        )
+        print(f"{status}: {count}")
+
+
+def main():
+    while True:
+        print("\n================================")
+        print(" RECRUITMENT & HR ANALYTICS")
+        print("================================")
+        print("1. Add Candidate")
+        print("2. View Candidates")
+        print("3. Add Job Opening")
+        print("4. View Job Openings")
+        print("5. Apply for Job")
+        print("6. View Applications")
+        print("7. Update Application Status")
+        print("8. Schedule Interview")
+        print("9. View Interviews")
+        print("10. HR Analytics Report")
+        print("0. Exit")
+
+        choice = input("Enter your choice: ").strip()
+
+        if choice == "1":
+            add_candidate()
+        elif choice == "2":
+            view_candidates()
+        elif choice == "3":
+            add_job()
+        elif choice == "4":
+            view_jobs()
+        elif choice == "5":
+            apply_for_job()
+        elif choice == "6":
+            view_applications()
+        elif choice == "7":
+            update_status()
+        elif choice == "8":
+            schedule_interview()
+        elif choice == "9":
+            view_interviews()
+        elif choice == "10":
+            analytics_report()
+        elif choice == "0":
+            print("Thank you for using HR Analytics Portal!")
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
+
+if __name__ == "__main__":
+    main()
