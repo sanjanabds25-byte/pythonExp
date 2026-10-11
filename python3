@@ -1,0 +1,450 @@
+
+import sqlite3
+import csv
+from pathlib import Path
+
+# Store the database in the same folder as this Python file
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "hr_analytics.db"
+
+
+def connect():
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+
+def create_tables():
+    with connect() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS candidates (
+                candidate_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT,
+                skills TEXT,
+                experience REAL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS jobs (
+                job_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                department TEXT,
+                openings INTEGER DEFAULT 1
+            );
+
+            CREATE TABLE IF NOT EXISTS applications (
+                application_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                candidate_id INTEGER NOT NULL,
+                job_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'Applied',
+                FOREIGN KEY (candidate_id)
+                    REFERENCES candidates(candidate_id),
+                FOREIGN KEY (job_id)
+                    REFERENCES jobs(job_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS interviews (
+                interview_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                application_id INTEGER NOT NULL,
+                interview_date TEXT,
+                result TEXT DEFAULT 'Pending',
+                FOREIGN KEY (application_id)
+                    REFERENCES applications(application_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS employees (
+                employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                department TEXT,
+                salary REAL DEFAULT 0,
+                joining_date TEXT
+            );
+        """)
+
+
+def add_candidate():
+    name = input("Candidate name: ").strip()
+    if not name:
+        print("Name is required.")
+        return
+
+    email = input("Email: ").strip()
+    skills = input("Skills: ").strip()
+
+    try:
+        experience = float(input("Experience in years: "))
+        if experience < 0:
+            print("Experience cannot be negative.")
+            return
+    except ValueError:
+        print("Enter a valid number for experience.")
+        return
+
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO candidates
+               (name, email, skills, experience)
+               VALUES (?, ?, ?, ?)""",
+            (name, email, skills, experience)
+        )
+
+    print("Candidate added successfully.")
+
+
+def add_job():
+    title = input("Job title: ").strip()
+    if not title:
+        print("Job title is required.")
+        return
+
+    department = input("Department: ").strip()
+
+    try:
+        openings = int(input("Number of openings: "))
+        if openings < 1:
+            print("Openings must be at least 1.")
+            return
+    except ValueError:
+        print("Enter a valid whole number.")
+        return
+
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO jobs (title, department, openings)
+               VALUES (?, ?, ?)""",
+            (title, department, openings)
+        )
+
+    print("Job added successfully.")
+
+
+def view_candidates():
+    with connect() as conn:
+        rows = conn.execute(
+            """SELECT candidate_id, name, email, skills, experience
+               FROM candidates ORDER BY candidate_id"""
+        ).fetchall()
+
+    if not rows:
+        print("No candidates found.")
+        return
+
+    print("\n--- CANDIDATES ---")
+    for row in rows:
+        print(
+            f"ID: {row[0]} | Name: {row[1]} | Email: {row[2]} | "
+            f"Skills: {row[3]} | Experience: {row[4]} years"
+        )
+
+
+def view_jobs():
+    with connect() as conn:
+        rows = conn.execute(
+            """SELECT job_id, title, department, openings
+               FROM jobs ORDER BY job_id"""
+        ).fetchall()
+
+    if not rows:
+        print("No jobs found.")
+        return
+
+    print("\n--- JOB OPENINGS ---")
+    for row in rows:
+        print(
+            f"ID: {row[0]} | Title: {row[1]} | "
+            f"Department: {row[2]} | Openings: {row[3]}"
+        )
+
+
+def add_application():
+    view_candidates()
+    try:
+        candidate_id = int(input("Candidate ID: "))
+        view_jobs()
+        job_id = int(input("Job ID: "))
+    except ValueError:
+        print("Please enter valid numeric IDs.")
+        return
+
+    with connect() as conn:
+        candidate = conn.execute(
+            "SELECT candidate_id FROM candidates WHERE candidate_id = ?",
+            (candidate_id,)
+        ).fetchone()
+
+        job = conn.execute(
+            "SELECT job_id FROM jobs WHERE job_id = ?",
+            (job_id,)
+        ).fetchone()
+
+        if not candidate or not job:
+            print("Candidate ID or job ID does not exist.")
+            return
+
+        conn.execute(
+            """INSERT INTO applications
+               (candidate_id, job_id, status)
+               VALUES (?, ?, 'Applied')""",
+            (candidate_id, job_id)
+        )
+
+    print("Application added successfully.")
+
+
+def update_application_status():
+    try:
+        application_id = int(input("Application ID: "))
+    except ValueError:
+        print("Enter a valid application ID.")
+        return
+
+    status = input(
+        "New status (Applied/Shortlisted/Selected/Rejected): "
+    ).strip().title()
+
+    allowed = {"Applied", "Shortlisted", "Selected", "Rejected"}
+    if status not in allowed:
+        print("Invalid status.")
+        return
+
+    with connect() as conn:
+        cursor = conn.execute(
+            "UPDATE applications SET status = ? WHERE application_id = ?",
+            (status, application_id)
+        )
+
+    if cursor.rowcount:
+        print("Application status updated.")
+    else:
+        print("Application not found.")
+
+
+def view_applications():
+    with connect() as conn:
+        rows = conn.execute("""
+            SELECT a.application_id, c.name, j.title, a.status
+            FROM applications a
+            JOIN candidates c ON a.candidate_id = c.candidate_id
+            JOIN jobs j ON a.job_id = j.job_id
+            ORDER BY a.application_id
+        """).fetchall()
+
+    if not rows:
+        print("No applications found.")
+        return
+
+    print("\n--- APPLICATIONS ---")
+    for row in rows:
+        print(
+            f"Application ID: {row[0]} | Candidate: {row[1]} | "
+            f"Job: {row[2]} | Status: {row[3]}"
+        )
+
+
+def add_interview():
+    view_applications()
+
+    try:
+        application_id = int(input("Application ID: "))
+    except ValueError:
+        print("Enter a valid application ID.")
+        return
+
+    interview_date = input("Interview date (YYYY-MM-DD): ").strip()
+
+    with connect() as conn:
+        application = conn.execute(
+            "SELECT application_id FROM applications WHERE application_id = ?",
+            (application_id,)
+        ).fetchone()
+
+        if not application:
+            print("Application not found.")
+            return
+
+        conn.execute(
+            """INSERT INTO interviews
+               (application_id, interview_date, result)
+               VALUES (?, ?, 'Pending')""",
+            (application_id, interview_date)
+        )
+
+    print("Interview scheduled successfully.")
+
+
+def add_employee():
+    name = input("Employee name: ").strip()
+    if not name:
+        print("Employee name is required.")
+        return
+
+    department = input("Department: ").strip()
+    joining_date = input("Joining date (YYYY-MM-DD): ").strip()
+
+    try:
+        salary = float(input("Salary: "))
+        if salary < 0:
+            print("Salary cannot be negative.")
+            return
+    except ValueError:
+        print("Enter a valid salary.")
+        return
+
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO employees
+               (name, department, salary, joining_date)
+               VALUES (?, ?, ?, ?)""",
+            (name, department, salary, joining_date)
+        )
+
+    print("Employee added successfully.")
+
+
+def analytics():
+    with connect() as conn:
+        total_candidates = conn.execute(
+            "SELECT COUNT(*) FROM candidates"
+        ).fetchone()[0]
+
+        total_jobs = conn.execute(
+            "SELECT COUNT(*) FROM jobs"
+        ).fetchone()[0]
+
+        total_applications = conn.execute(
+            "SELECT COUNT(*) FROM applications"
+        ).fetchone()[0]
+
+        selected = conn.execute(
+            "SELECT COUNT(*) FROM applications WHERE status = 'Selected'"
+        ).fetchone()[0]
+
+        total_employees = conn.execute(
+            "SELECT COUNT(*) FROM employees"
+        ).fetchone()[0]
+
+        average_salary = conn.execute(
+            "SELECT AVG(salary) FROM employees"
+        ).fetchone()[0]
+
+        status_counts = conn.execute("""
+            SELECT status, COUNT(*)
+            FROM applications
+            GROUP BY status
+            ORDER BY status
+        """).fetchall()
+
+        department_counts = conn.execute("""
+            SELECT department, COUNT(*)
+            FROM employees
+            GROUP BY department
+            ORDER BY department
+        """).fetchall()
+
+    print("\n--- HR ANALYTICS DASHBOARD ---")
+    print("Total candidates:", total_candidates)
+    print("Total job openings listed:", total_jobs)
+    print("Total applications:", total_applications)
+    print("Selected applications:", selected)
+    print("Total employees:", total_employees)
+    print(
+        "Average salary:",
+        f"{average_salary:.2f}" if average_salary is not None else "N/A"
+    )
+
+    print("\nApplications by status:")
+    if status_counts:
+        for status, count in status_counts:
+            print(f"{status}: {count}")
+    else:
+        print("No application data available.")
+
+    print("\nEmployees by department:")
+    if department_counts:
+        for department, count in department_counts:
+            print(f"{department or 'Unspecified'}: {count}")
+    else:
+        print("No employee data available.")
+
+
+def export_candidates():
+    with connect() as conn:
+        rows = conn.execute("""
+            SELECT candidate_id, name, email, skills, experience
+            FROM candidates ORDER BY candidate_id
+        """).fetchall()
+
+    file_path = BASE_DIR / "candidates_report.csv"
+
+    with open(file_path, "w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(
+            ["Candidate ID", "Name", "Email", "Skills", "Experience"]
+        )
+        writer.writerows(rows)
+
+    print("Candidates exported to:", file_path)
+
+
+def main():
+    try:
+        create_tables()
+    except sqlite3.Error as error:
+        print("Database initialization failed:", error)
+        print("Check that the project folder is writable.")
+        return
+
+    while True:
+        print("""
+====== RECRUITMENT & HR ANALYTICS PORTAL ======
+1. Add Candidate
+2. Add Job
+3. View Candidates
+4. View Jobs
+5. Add Application
+6. View Applications
+7. Update Application Status
+8. Schedule Interview
+9. Add Employee
+10. HR Analytics Dashboard
+11. Export Candidates to CSV
+0. Exit
+""")
+
+        choice = input("Enter your choice: ").strip()
+
+
+        try:
+            if choice == "1":
+                add_candidate()
+            elif choice == "2":
+                add_job()
+            elif choice == "3":
+                view_candidates()
+            elif choice == "4":
+                view_jobs()
+            elif choice == "5":
+                add_application()
+            elif choice == "6":
+                view_applications()
+            elif choice == "7":
+                update_application_status()
+            elif choice == "8":
+                add_interview()
+            elif choice == "9":
+                add_employee()
+            elif choice == "10":
+                analytics()
+            elif choice == "11":
+                export_candidates()
+            elif choice == "0":
+                print("Thank you for using the HR Analytics Portal.")
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+        except sqlite3.Error as error:
+            print("Database error:", error)
+
+
+main()
