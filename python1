@@ -1,5 +1,4 @@
 
-
 candidates = []
 
 def add_candidate():
