@@ -5,7 +5,6 @@ candidates = []
 jobs = []
 applications = []
 interviews = []
-
 def add_candidate():
     name = input("Enter candidate name: ").strip()
     email = input("Enter candidate email: ").strip()
