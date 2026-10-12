@@ -5,7 +5,6 @@ def add_candidate():
     name = input("Enter candidate name: ")
     email = input("Enter email: ")
     skills = input("Enter skills: ")
-
     candidate = {
         "name": name,
         "email": email,
