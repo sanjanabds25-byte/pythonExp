@@ -1,7 +1,6 @@
 
 # Recruitment & HR Analytics Portal
 # Stage 2: Moderate Project
-
 candidates = []
 jobs = []
 applications = []
