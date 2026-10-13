@@ -17,7 +17,6 @@ def view_candidates():
     if not candidates:
         print("No candidates found.")
         return
-
     for candidate in candidates:
         print("Name:", candidate["name"])
         print("Email:", candidate["email"])
