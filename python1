@@ -10,7 +10,6 @@ def add_candidate():
         "email": email,
         "skills": skills
     }
-
     candidates.append(candidate)
     print("Candidate added successfully!")
 
