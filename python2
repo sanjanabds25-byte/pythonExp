@@ -13,7 +13,6 @@ def add_candidate():
     if not name or not email:
         print("Name and email are required!")
         return
-
     candidate = {
         "id": len(candidates) + 1,
         "name": name,
