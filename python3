@@ -10,7 +10,6 @@ def connect():
     conn = sqlite3.connect(str(DB_PATH))
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
-
 def create_tables():
     with connect() as conn:
         conn.executescript("""
